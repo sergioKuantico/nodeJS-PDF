@@ -431,7 +431,7 @@ app.post("/generate-pdf", async (req, res) => {
 </html>
     `;
 
-    await page.setContent(html, { waitUntil: "domcontentloaded" });
+    await page.setContent(html, { waitUntil: "networkidle0" });
 
     // Generar el PDF dentro del directorio "public"
     const pdfPath = path.join(publicDir, "cotizacion.pdf");
