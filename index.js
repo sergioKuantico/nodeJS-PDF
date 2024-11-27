@@ -1,26 +1,34 @@
-const express = require('express');
-const puppeteer = require('puppeteer');
-const path = require('path');
-const fs = require('fs');
+const express = require("express");
+const puppeteer = require("puppeteer");
+const path = require("path");
+const fs = require("fs");
 
 const app = express();
 
-// Middleware para parsear JSON
 app.use(express.json());
 
-// Middleware para servir archivos estáticos
-app.use('/static', express.static(path.join(__dirname, 'static')));
+// Asegúrate de que el directorio "public" existe
+const publicDir = path.join(__dirname, "public");
+if (!fs.existsSync(publicDir)) {
+  fs.mkdirSync(publicDir);
+}
 
-// Ruta para generar el PDF
-app.post('/generate-pdf', async (req, res) => {
-    try {
-        const { quoteData } = req.body; // Datos de la cotización
-        const browser = await puppeteer.launch();
-        const page = await browser.newPage();
+// Servir archivos estáticos desde el directorio "public"
+app.use("/static", express.static(publicDir));
 
-        // Generar contenido HTML para el PDF
-        const html = `
-          <html lang="es">
+app.post("/generate-pdf", async (req, res) => {
+  try {
+    const { quoteData } = req.body;
+
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+
+    const page = await browser.newPage();
+
+    const html = `
+      <html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -121,15 +129,15 @@ app.post('/generate-pdf', async (req, res) => {
           <!-- LOGO  -->
           <td style="width: 50%; text-align: left; padding: 10px; padding-left: 40px;">
             <h2 style="margin-top: 0">Proyecto:</h2>
-            <h2 style="margin-top: 0">{{ params.proyectName }}</h2>
-            <p>N° de cotización: {{ params.quateCode }}</p>
+            <h2 style="margin-top: 0">${quoteData.proyectName}</h2>
+            <p>N° de cotización: ${quoteData.quateCode}</p>
           </td>
           <!-- LOGO  -->
           <!-- INFO  -->
           <td style="width: 50%; text-align: center">
             <img
               style="border-radius: 10px; width: 50%"
-              src="https://besalcoinmobiliaria.cl/pdf/projects/{{params.projectId}}.png"
+              src="https://besalcoinmobiliaria.cl/pdf/projects/${quoteData.projectId}.png"
               alt=""
             /><br />
             <img
@@ -146,7 +154,7 @@ app.post('/generate-pdf', async (req, res) => {
 
     <div style="margin: 40px auto; text-align: left;">
       <p style="margin: 40px; text-align: justify">
-        Estimado/a: <strong>{{ params.leadName }}</strong>
+        Estimado/a: <strong>${quoteData.leadName}</strong>
         <br />
         <br />
         Gracias por cotizar en Besalco Inmobiliaria. Pronto un ejecutivo se contactará con usted, para entregarle mayor información sobre el proyecto en el que está interesado. A continuación detallamos su cotización. 
@@ -190,22 +198,22 @@ app.post('/generate-pdf', async (req, res) => {
           <tr>
             <td style="width: 30%; padding: 10px; border-bottom: 1px solid white;">Proyecto</td>
             <td style="width: 5%; padding: 10px; border-bottom: 1px solid white;">:</td>
-            <td style="width: 65%; padding: 10px; border-bottom: 1px solid white;">{{ params.proyectName }}</td>
+            <td style="width: 65%; padding: 10px; border-bottom: 1px solid white;">${quoteData.proyectName}</td>
           </tr>
           <tr>
             <td style="padding: 10px; border-bottom: 1px solid white;; border-bottom: 1px solid white;">Teléfono</td>
             <td style="padding: 10px; border-bottom: 1px solid white;">:</td>
-            <td style="padding: 10px; border-bottom: 1px solid white;">{{ params.eje_phone }}</td>
+            <td style="padding: 10px; border-bottom: 1px solid white;">${quoteData.eje_phone}</td>
           </tr>
           <tr>
             <td style="padding: 10px; border-bottom: 1px solid white;">Correo</td>
             <td style="padding: 10px; border-bottom: 1px solid white;">:</td>
-            <td style="padding: 10px; border-bottom: 1px solid white;">{{ params.eje_mail }}</td>
+            <td style="padding: 10px; border-bottom: 1px solid white;">${quoteData.eje_mail}</td>
           </tr>
           <tr>
             <td style="padding: 10px; border-bottom: 1px solid white;">Fecha emisión</td>
             <td style="padding: 10px; border-bottom: 1px solid white;">:</td>
-            <td style="padding: 10px; border-bottom: 1px solid white;">{{ params.fecha }}</td>
+            <td style="padding: 10px; border-bottom: 1px solid white;">${quoteData.fecha}</td>
           </tr>
           <tr>
             <td style="padding: 10px; border-bottom: 1px solid white;">Validez</td>
@@ -233,17 +241,17 @@ app.post('/generate-pdf', async (req, res) => {
           <tr>
             <td style="width: 20%; padding: 10px; border-bottom: 1px solid white;">Señor(a)</td>
             <td style="width: 5%; padding: 10px; border-bottom: 1px solid white;">:</td>
-            <td style="width: 75%; padding: 10px; border-bottom: 1px solid white;">{{ params.leadName }}</td>
+            <td style="width: 75%; padding: 10px; border-bottom: 1px solid white;">${quoteData.leadName}</td>
           </tr>
           <tr>
             <td style="padding: 10px; border-bottom: 1px solid white;">Teléfono</td>
             <td style="padding: 10px; border-bottom: 1px solid white;">:</td>
-            <td style="padding: 10px; border-bottom: 1px solid white;">{{ params.leadPhone }}</td>
+            <td style="padding: 10px; border-bottom: 1px solid white;">${quoteData.leadPhone}</td>
           </tr>
           <tr>
             <td style="padding: 10px; border-bottom: 1px solid white;">Correo</td>
             <td style="padding: 10px; border-bottom: 1px solid white;">:</td>
-            <td style="padding: 10px; border-bottom: 1px solid white;">{{ params.leadEmail }}</td>
+            <td style="padding: 10px; border-bottom: 1px solid white;">${quoteData.leadEmail}</td>
           </tr>
         </table>
       </div>
@@ -263,18 +271,18 @@ app.post('/generate-pdf', async (req, res) => {
           </tr>
           <tr>
             <td style="width: 33%; padding: 10px; border-bottom: 1px solid white;">Pie (15%)</td>
-            <td style="width: 33%; padding: 10px; border-bottom: 1px solid white;">{{ params.ufPrice15 }} UF</td>
-            <td style="width: 33%; padding: 10px; border-bottom: 1px solid white;">$ {{ params.normalPrice15 }}</td>
+            <td style="width: 33%; padding: 10px; border-bottom: 1px solid white;">${quoteData.ufPrice15} UF</td>
+            <td style="width: 33%; padding: 10px; border-bottom: 1px solid white;">$ ${quoteData.normalPrice15}</td>
           </tr>
           <tr>
             <td style="padding: 10px; border-bottom: 1px solid white;">Crédito Hipotecario (85%)</td>
-            <td style="padding: 10px; border-bottom: 1px solid white;">{{ params.ufPrice85 }} UF</td>
-            <td style="padding: 10px; border-bottom: 1px solid white;">$ {{ params.normalPrice85 }}</td>
+            <td style="padding: 10px; border-bottom: 1px solid white;">${quoteData.ufPrice85} UF</td>
+            <td style="padding: 10px; border-bottom: 1px solid white;">$ ${quoteData.normalPrice85}</td>
           </tr>
           <tr>
             <td style="padding: 10px; border-bottom: 1px solid white;">Total</td>
-            <td style="padding: 10px; border-bottom: 1px solid white;">{{ params.ufPrice }} UF</td>
-            <td style="padding: 10px; border-bottom: 1px solid white;">$ {{ params.normalPrice }}</td>
+            <td style="padding: 10px; border-bottom: 1px solid white;">${quoteData.ufPrice} UF</td>
+            <td style="padding: 10px; border-bottom: 1px solid white;">$ ${quoteData.normalPrice}</td>
           </tr>
         </table>
         <p style="color: #7a7b7c; padding: 40px; margin: 0">
@@ -293,41 +301,41 @@ app.post('/generate-pdf', async (req, res) => {
           <tr>
             <td colspan="2" style="padding: 20px">
               <h4 style="color: #929294; font-size: 18px">
-                Datos de la propiedad {{ params.unidad }}
+                Datos de la propiedad ${quoteData.unidad}
               </h4>
             </td>
           </tr>
           <tr>
             <td style="width: 50%; padding: 10px; border-bottom: 1px solid white;">Tipología</td>
-            <td style="width: 50%; padding: 10px; border-bottom: 1px solid white;">{{ params.programa }}</td>
+            <td style="width: 50%; padding: 10px; border-bottom: 1px solid white;">${quoteData.programa}</td>
           </tr>
           <tr>
             <td style="padding: 10px; border-bottom: 1px solid white;">Orientación</td>
-            <td style="padding: 10px; border-bottom: 1px solid white;">{{ params.orientacion }}</td>
+            <td style="padding: 10px; border-bottom: 1px solid white;">${quoteData.orientacion}</td>
           </tr>
           <tr>
             <td style="padding: 10px; border-bottom: 1px solid white;">Área útil (m2) útil</td>
-            <td style="padding: 10px; border-bottom: 1px solid white;">{{ params.suputil }}</td>
+            <td style="padding: 10px; border-bottom: 1px solid white;">${quoteData.suputil}</td>
           </tr>
           <tr>
             <td style="padding: 10px; border-bottom: 1px solid white;">Terraza</td>
-            <td style="padding: 10px; border-bottom: 1px solid white;">{{ params.supterra }}</td>
+            <td style="padding: 10px; border-bottom: 1px solid white;">${quoteData.supterra}</td>
           </tr>
           <tr>
             <td style="padding: 10px; border-bottom: 1px solid white;">Total</td>
-            <td style="padding: 10px; border-bottom: 1px solid white;">{{ params.suptotal }}</td>
+            <td style="padding: 10px; border-bottom: 1px solid white;">${quoteData.suptotal}</td>
           </tr>
           <tr>
             <td style="padding: 10px; border-bottom: 1px solid white;">Precio</td>
-            <td style="padding: 10px; border-bottom: 1px solid white;">UF {{ params.ufPrice }}</td>
+            <td style="padding: 10px; border-bottom: 1px solid white;">UF ${quoteData.ufPrice}</td>
           </tr>
           <tr>
             <td style="padding: 10px; border-bottom: 1px solid white;">Descuento</td>
-            <td style="padding: 10px; border-bottom: 1px solid white;">{{ params.descuento }}%</td>
+            <td style="padding: 10px; border-bottom: 1px solid white;">${quoteData.descuento}%</td>
           </tr>
           <tr>
             <td style="padding: 10px; border-bottom: 1px solid white;">Total</td>
-            <td style="padding: 10px; border-bottom: 1px solid white;">UF {{ params.totalPrice }}</td>
+            <td style="padding: 10px; border-bottom: 1px solid white;">UF ${quoteData.totalPrice}</td>
           </tr>
         </table>
       </div>
@@ -348,7 +356,7 @@ app.post('/generate-pdf', async (req, res) => {
         <div style="text-align: center">
 
           <img
-            src="{{params.procesedImg}}"
+            src="${quoteData.procesedImg}"
             width="100%"
             style="margin: 0px auto"
             alt="imagen del modelo"
@@ -421,29 +429,22 @@ app.post('/generate-pdf', async (req, res) => {
     <!-- LEGALES  -->
   </body>
 </html>
-        `;
+    `;
 
-        await page.setContent(html);
+    await page.setContent(html, { waitUntil: "domcontentloaded" });
 
-        // Crear la carpeta 'static' si no existe
-        const staticDir = path.join(__dirname, 'static');
-        if (!fs.existsSync(staticDir)) {
-            fs.mkdirSync(staticDir);
-        }
+    // Generar el PDF dentro del directorio "public"
+    const pdfPath = path.join(publicDir, "cotizacion.pdf");
+    await page.pdf({ path: pdfPath, format: "A4" });
 
-        // Ruta para guardar el PDF
-        const pdfPath = path.join(staticDir, 'cotizacion.pdf');
+    await browser.close();
 
-        // Generar el PDF
-        await page.pdf({ path: pdfPath, format: 'A4' });
-        await browser.close();
-
-        // Devolver la URL para acceder al PDF
-        res.status(200).json({ url: '/static/cotizacion.pdf' });
-    } catch (error) {
-        console.error('Error al generar el PDF:', error);
-        res.status(500).send('Error al generar el PDF');
-    }
+    // Enviar la URL del archivo al cliente
+    res.status(200).json({ url: `/static/cotizacion.pdf` });
+  } catch (error) {
+    console.error("Error al generar el PDF:", error);
+    res.status(500).send("Error al generar el PDF");
+  }
 });
 
-app.listen(3000, () => console.log('Server running on port 3000'));
+app.listen(3000, () => console.log("Server running on port 3000"));
