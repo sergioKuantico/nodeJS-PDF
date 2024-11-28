@@ -2,12 +2,11 @@ const express = require("express");
 const puppeteer = require("puppeteer");
 const path = require("path");
 const fs = require("fs");
+const cron = require("node-cron");
 
 const app = express();
-
 app.use(express.json());
 
-// Asegúrate de que el directorio "public" existe
 const publicDir = path.join(__dirname, "public");
 if (!fs.existsSync(publicDir)) {
   fs.mkdirSync(publicDir);
@@ -16,9 +15,16 @@ if (!fs.existsSync(publicDir)) {
 // Servir archivos estáticos desde el directorio "public"
 app.use("/static", express.static(publicDir));
 
+app.get("/", (req, res) => {
+  res.send("It's Working");
+});
+
+// Generar PDF con un nombre único
 app.post("/generate-pdf", async (req, res) => {
   try {
     const { quoteData } = req.body;
+    const pdfFileName = `cotizacion_${quoteData.quateCode}.pdf`;
+    const pdfPath = path.join(publicDir, pdfFileName);
 
     const browser = await puppeteer.launch({
       headless: true,
@@ -433,18 +439,53 @@ app.post("/generate-pdf", async (req, res) => {
 
     await page.setContent(html, { waitUntil: "networkidle0" });
 
-    // Generar el PDF dentro del directorio "public"
-    const pdfPath = path.join(publicDir, "cotizacion.pdf");
     await page.pdf({ path: pdfPath, format: "A4" });
-
     await browser.close();
 
-    // Enviar la URL del archivo al cliente
-    res.status(200).json({ url: `/static/cotizacion.pdf` });
+    res.status(200).json({ url: `/static/${pdfFileName}` });
   } catch (error) {
     console.error("Error al generar el PDF:", error);
     res.status(500).send("Error al generar el PDF");
   }
+});
+
+// Tarea programada para limpiar archivos viejos
+cron.schedule("0 0 * * *", () => {
+  // Se ejecuta todos los días a la medianoche
+  const TEN_DAYS_IN_MS = 10 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+
+  fs.readdir(publicDir, (err, files) => {
+    if (err) {
+      console.error("Error al leer la carpeta de PDFs:", err);
+      return;
+    }
+
+    files.forEach((file) => {
+      const filePath = path.join(publicDir, file);
+
+      fs.stat(filePath, (err, stats) => {
+        if (err) {
+          console.error(
+            `Error al obtener información del archivo ${file}:`,
+            err
+          );
+          return;
+        }
+
+        const fileAge = now - stats.mtimeMs; // Edad del archivo en milisegundos
+        if (fileAge > TEN_DAYS_IN_MS) {
+          fs.unlink(filePath, (err) => {
+            if (err) {
+              console.error(`Error al eliminar el archivo ${file}:`, err);
+            } else {
+              console.log(`Archivo eliminado: ${file}`);
+            }
+          });
+        }
+      });
+    });
+  });
 });
 
 app.listen(3000, () => console.log("Server running on port 3000"));
